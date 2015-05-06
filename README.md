@@ -9,6 +9,7 @@
 	edit /etc/network/interfaces
 
 	example:
+
 		auto eth0
 		iface eth0 inet static
 		address 192.168.0.240
@@ -21,6 +22,7 @@
 	edit /etc/resolvconf/resolv.conf.d/head
 
 	example:
+
 		domain dummy.net
 		nameserver 192.168.0.201
 		nameserver 192.168.0.202
@@ -49,7 +51,7 @@
 
 		 mysql -uroot -p
  			GRANT ALL ON radius.* TO radius@localhost IDENTIFIED BY "radiuspassword";
-		 	GRANT ALL ON radius.* to radius@'10.%' IDENTIFIED BY "radiuspassword";
+		 	GRANT ALL ON radius.* to radius@'192.168.0.%' IDENTIFIED BY "radiuspassword";
 		 	USE radius
 		 	INSERT INTO  nas VALUES (NULL ,  '192.168.0.250',  'radiusClient',  'other', NULL ,  'radiusSecret', NULL , NULL ,  'RADIUS Client');
 		 	INSERT INTO  nas VALUES (NULL ,  '127.0.0.1',  'voucherBox',  'other', NULL ,  'radiusSecret', NULL , NULL ,  'RADIUS Client');
