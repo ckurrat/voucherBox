@@ -1,0 +1,123 @@
+authorize {
+        #
+        #  The preprocess module takes care of sanitizing some bizarre
+        #  attributes in the request, and turning them into attributes
+        #  which are more standard.
+        #
+        #  It takes care of processing the 'raddb/hints' and the
+        #  'raddb/huntgroups' files.
+        preprocess
+
+        #
+        #  If you are using multiple kinds of realms, you probably
+        #  want to set "ignore_null = yes" for all of them.
+        #  Otherwise, when the first style of realm doesn't match,
+        #  the other styles won't be checked.
+        #
+        # suffix
+
+        # files
+        
+        # If not initialised the Expiration field containd something like Dxxx where xxx is the voucher validity measured in days
+
+        if ( "%{sql: SELECT value FROM radcheck WHERE username='%{User-Name}' AND attribute='Expiration'}" =~  /D(.*)/i  ) {
+                update control {
+                        Tmp-String-2 := "%{sql: UPDATE radcheck SET value=DATE_FORMAT( DATE_ADD(NOW() ,INTERVAL %{1} DAY),'%%d %%b %%Y %%T') WHERE (username='%{User-Name}' AND attribute='Expiration') }; SELECT NOW()"
+                }
+        }
+
+        sql
+
+        #
+        # If there is a line whose username matches the voucher code proceed to expiration check
+        #
+        if ( "%{sql: SELECT username FROM radcheck WHERE username='%{User-Name}'}"  ) {
+                update control {
+                        Auth-Type := Accept
+                }
+        }
+
+        expiration
+}
+
+
+#  Authentication.
+#
+#
+authenticate {
+}
+
+
+#
+#  Pre-accounting.  Decide which accounting type to use.
+#
+preacct {
+        preprocess
+
+        #
+        #  Ensure that we have a semi-unique identifier for every
+        #  request, and many NAS boxes are broken.
+        acct_unique
+
+        suffix
+
+        #  Read the 'acct_users' file
+        files
+}
+
+#
+#  Accounting.  Log the accounting data.
+#
+accounting {
+        detail
+        radutmp
+
+        sql
+        exec
+
+        #  Filter attributes from the accounting response.
+        attr_filter.accounting_response
+}
+
+
+#  Session database, used for checking Simultaneous-Use. Either the radutmp
+#  or rlm_sql module can handle this.
+#  The rlm_sql module is *much* faster
+session {
+        radutmp
+
+        #  See "Simultaneous Use Checking Queries" in sql.conf
+        sql
+}
+
+
+#  Post-Authentication
+#  Once we KNOW that the user has been authenticated, there are
+#  additional steps we can take.
+post-auth {
+        #
+        #  After authenticating the user, do another SQL query.
+        #
+        #  See "Authentication Logging Queries" in sql.conf
+        sql
+
+        # For Exec-Program and Exec-Program-Wait
+        exec
+
+        #
+        #  Access-Reject packets are sent through the REJECT sub-section of the
+        #  post-auth section.
+        #
+        #  Add the ldap module name (or instance) if you have set
+        #  'edir_account_policy_check = yes' in the ldap module configuration
+        #
+        Post-Auth-Type REJECT {
+                # log failed authentications in SQL, too.
+                sql
+                attr_filter.access_reject
+        }
+}
+
+post-proxy {
+        eap
+}
